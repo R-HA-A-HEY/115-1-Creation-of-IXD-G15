@@ -6,7 +6,6 @@ let combo = 0;
 const GRAVITY = 0;
 const FRICTION = 0.85;
 const SENSITIVITY = 0.5;
-
 const BALLWIDTH = 70;
 const BALLHEIGHT = 70;
 const HOLEWIDTH = 90;
@@ -15,6 +14,10 @@ const HOLE_XS = [0.8, 0.2, 0.5];
 const HOLE_Z = 100;
 const Z_TOLERANCE = 5;
 const MAX_FLIGHT_MS = 3000;
+const JUDGE_Z = HOLE_Z - Z_TOLERANCE * 6;
+const MAX_SPEED = 10;
+const HIT_SCALE = 1.3;  
+
 
 const PAPERBALL = new Image();
 const BLACKHOLE = new Image();
@@ -91,7 +94,7 @@ export function ResetLayout() {
 
     scale = Math.min(w / WIDTH, h / HEIGHT);
     screen.Set(0, 0, w, h);
-    boundary.Set(w * 0.35, h * 0.7, w, h);
+    boundary.Set(w * 0.2, h * 0.7, w * 0.8, h);
 
     ResetBall();
 
@@ -133,6 +136,12 @@ export function Setup() {
         const p = pos(e);
         paperBall.velocityX = (p.x - _mouseX) * SENSITIVITY;
         paperBall.velocityY = (p.y - _mouseY) * SENSITIVITY;
+
+        const sp = Math.hypot(paperBall.velocityX, paperBall.velocityY);
+        if (sp > MAX_SPEED) {
+            paperBall.velocityX *= MAX_SPEED / sp;
+            paperBall.velocityY *= MAX_SPEED / sp;
+        }
         // paperBall.velocityZ = Math.abs(p.y - _mouseY) * SENSITIVITY * 0.2;
         paperBall.x = p.x;
         paperBall.y = p.y;
@@ -165,36 +174,35 @@ export function Setup() {
 
 function Update() {
     paperBall.Update(GRAVITY, FRICTION, screen);
+    blackHoles.forEach(h => h.Update());
 
     const flying = paperBall.isActive && !paperBall.isDragging;
-    let scored = false;
-
-    for (const hole of blackHoles) {
-        hole.Update();
-        if (flying && !scored && paperBall.z >= hole.z - Z_TOLERANCE * 6 && hole.Contains(paperBall)) {
-            if(choice[hole.id].isValid) scored = true;
-        }
-    }
-
+    if (flying) console.log('z', paperBall.z.toFixed(1), 'y', paperBall.y.toFixed(0));
     if (flying) {
-        const reachedBack = paperBall.z >= HOLE_Z - Z_TOLERANCE;
+        const crossed = paperBall.prevZ < JUDGE_Z && paperBall.z >= JUDGE_Z;
         const timeout = performance.now() - releasedAt > MAX_FLIGHT_MS;
 
-        if (scored) {
-            combo++;
-            score += 100 * (1 + combo * 0.1);
+        if (crossed) {
+            const hit = blackHoles.find(h => h.Contains(paperBall, HIT_SCALE));
+            if (hit && choice[hit.id].isValid) {
+                combo++;
+                score += 100 * (1 + combo * 0.1);
+                console.log("ll");
+            } else {
+                combo = 0;
+            }
             ResetBall();
             choice = GetChoice();
-        } else if (reachedBack || paperBall.IsSettled() || timeout) {
+        } else if (paperBall.IsSettled() || timeout) {
             combo = 0;
             ResetBall();
             choice = GetChoice();
         }
     }
-    console.log(score);
+    console.log(paperBall.z);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    choice.forEach(c => c.Draw(ctx)); 
+    choice.forEach(c => c.Draw(ctx));
     blackHoles.forEach(h => h.Draw(ctx));
     paperBall.Draw(ctx);
     requestAnimationFrame(Update);

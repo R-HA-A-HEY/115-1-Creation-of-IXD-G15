@@ -1,6 +1,7 @@
 export const MAX_Z = 100;
+export const DEPTH_Y = 2.6;
 export function DepthScale(z){
-    return Math.max((MAX_Z - z) * 0.003, 0.7);
+    return 1 - (z / MAX_Z) * 0.3;
 }
 export class Choice {
     constructor(x, y, width, height, src, isValid) {
@@ -47,6 +48,7 @@ export class PaperBall {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.prevZ = 0;
         this.scaleX = 1;
         this.scaleY = 1;
         this.width = width;
@@ -57,7 +59,6 @@ export class PaperBall {
         this.image = image;
         this.isActive = false;
         this.isDragging = false;
-        
     }
     isPointInside(mouseX, mouseY){
         let dx = Math.abs(mouseX - this.x);
@@ -82,6 +83,7 @@ export class PaperBall {
     Update(gravity, friction, boundary){
         if (!this.isActive || this.isDragging) return;
 
+        this.prevZ = this.z;
         this.velocityY *= 0.98;
         this.velocityX *= 0.98;
         this.velocityZ *= 0.98;
@@ -100,17 +102,16 @@ export class PaperBall {
             this.velocityX = -this.velocityX * friction;
         }
 
-        if (this.y + this.height / 2 > boundary.y2 - this.z * 2.6){
-            this.y = boundary.y2 - this.z * 2.6 - this.height / 2;
+        if (this.y + this.height / 2 > boundary.y2 - this.z * DEPTH_Y){
+            this.y = boundary.y2 - this.z * DEPTH_Y - this.height / 2;
             // this.velocityY = -this.velocityY * friction;
             this.velocityX *= 0.81;
-            this.velocityZ *= 0.9;
+            // this.velocityZ *= 0.9;
         }
         if (this.z >= MAX_Z){
             this.z = MAX_Z;
             this.velocityZ = 0;
         }
-        console.log(this.z);
     }
     IsSettled(){
         return Math.abs(this.velocityX) < 0.3 &&
@@ -140,6 +141,7 @@ export class PaperBall {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.prevZ = z;
         this.width = width;
         this.height = height;
     }
@@ -177,10 +179,12 @@ export class BlackHole {
             this.speed = -this.speed;
         }
     }
-    Contains(ball){
-        let dx = Math.abs(ball.x - this.x) + (ball.width * ball.scaleX / 2) * 0.5;
-        let dy = Math.abs(ball.y - (this.y - (ball.height * ball.scaleY / 2))) * 0.5;
-        return dx <= (this.width * this.scaleX / 2) && dy <= (this.height * this.scaleY / 2);
+    Contains(ball, hitScale = 1){
+        const rx = this.width * this.scaleX / 2 * hitScale;
+        const ry = this.height * this.scaleY / 2 * hitScale;
+        const dx = (ball.x - this.x) / rx;
+        const dy = (ball.y - this.y) / ry;
+        return dx * dx + dy * dy <= 1;
     }
     Draw(ctx) {
         ctx.drawImage(
