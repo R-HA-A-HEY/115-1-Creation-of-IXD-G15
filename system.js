@@ -1,4 +1,4 @@
-import { BlackHole, Boundary, PaperBall, Choice } from './obj.js';
+import { BlackHole, Boundary, PaperBall, Choice, DEPTH_Y } from './obj.js';
 export let score = 0;
 
 let combo = 0;
@@ -16,10 +16,9 @@ const Z_TOLERANCE = 5;
 const MAX_FLIGHT_MS = 3000;
 const MAX_SPEED = 10; 
 const CHOICE_XS = [0.8, 0.2, 0.5];
-const CHOICE_Y = 0.5;
 const CHOICE_Z = 100;
 const JUDGE_Z = CHOICE_Z - Z_TOLERANCE * 6;
-const HIT_SCALE = 1.2; 
+const HIT_SCALE = 1; 
 
 const SETTLE_MS = 600;
 const SETTLE_DAMPING = 0.85;
@@ -199,11 +198,11 @@ function Update() {
     for (const c of choice) {
         c.Update();
         if (flying && !settling && !hit &&
-            paperBall.z >= c.z - Z_TOLERANCE * 6 && c.Contains(paperBall, HIT_SCALE)) {
+            paperBall.z >= JUDGE_Z && c.Contains(paperBall, HIT_SCALE)) {
             hit = c;
+            console.log(hit);
         }
     }
-
     if (settling) {
         paperBall.velocityX *= SETTLE_DAMPING;
         paperBall.velocityY *= SETTLE_DAMPING;
@@ -231,6 +230,10 @@ function Update() {
             settling = true;
             settleStart = now;
         } else if (reachedBack || paperBall.IsSettled() || timeout) {
+            console.log("miss", {
+                reachedBack, settled: paperBall.IsSettled(), timeout,
+                ballY: paperBall.y, ballZ: paperBall.z, choiceY: choice[0].y
+            });
             combo = 0;
             ResetBall();
             choice = GetChoice();
@@ -275,8 +278,9 @@ function GetChoice() {
     return result;
 }
 function PlaceChoices(list) {
+    const floorY = h - CHOICE_Z * DEPTH_Y - (BALLHEIGHT * scale) / 2;
     list.forEach((c, i) =>
-        c.Set(i, w * CHOICE_XS[i], h * CHOICE_Y, CHOICE_Z,
+        c.Set(i, w * CHOICE_XS[i], floorY, CHOICE_Z,
               CHOICEWIDTH * scale, CHOICEHEIGHT * scale,
               0, w * 0.1, w * 0.9));
 }

@@ -29,25 +29,29 @@ export class Choice {
         }
     }
     Contains(ball, hitScale = 1) {
-        const dx = Math.abs(ball.x - this.x) + (ball.width * ball.scaleX / 2) * 0.5;
-        const dy = Math.abs(ball.y - (this.y - ball.height * ball.scaleY / 2)) * 0.5;
-        return dx <= (this.width / 2) * hitScale && dy <= (this.height / 2) * hitScale;
+        const bw = ball.width * ball.scaleX;
+        const bh = ball.height * ball.scaleY;
+        const dx = Math.abs(ball.x - this.x);
+        const dy = Math.abs(ball.y - this.y);
+        return dx <= (this.width + bw) / 2 * hitScale &&
+            dy <= (this.height + bh) / 2 * hitScale;
     }
     Draw(ctx) {
         const left = this.x - this.width / 2;
         const top = this.y - this.height / 2;
         ctx.drawImage(
             this.image,
-            left,
-            top,
-            this.width,
-            this.height
+            left + this.width * 0.1,
+            top + this.height * 0.1,
+            this.width * 0.8,
+            this.height * 0.8
         );
         ctx.save();
         ctx.strokeStyle = "#41454b";
-        ctx.lineWidth = 20;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.roundRect(left, top, this.width, this.height, 16); 
+        ctx.stroke();
         ctx.restore();
     }
     Set(id, x, y, z, width, height, speed, minX, maxX) {
@@ -138,7 +142,7 @@ export class PaperBall {
         if (this.y + this.height / 2 > boundary.y2 - this.z * DEPTH_Y){
             this.y = boundary.y2 - this.z * DEPTH_Y - this.height / 2;
             // this.velocityY = -this.velocityY * friction;
-            this.velocityX *= 0.81;
+            // this.velocityX *= 0.81;
             // this.velocityZ *= 0.9;
         }
         if (this.z >= MAX_Z){
