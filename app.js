@@ -94,9 +94,9 @@ $('replyText').addEventListener('keydown', e => {
 function completeGame() {
   if (!gameTimerRunning) return;
   stopGameTimer();
-  $('score').textContent = score + '分';
-  entries.push({ name: nickname, score });
-  try { localStorage.setItem('sujieCompletedChallenge', JSON.stringify({ name: nickname, score, completedAt: new Date().toISOString(), code: 'SJ-' + Date.now().toString(36).toUpperCase() })) } catch (e) { console.warn('遊玩紀錄無法儲存', e) }
+  $('score').textContent = String(Math.floor(score)) + '分';
+  entries.push({ name: nickname, score: Math.floor(score) });
+  try { localStorage.setItem('sujieCompletedChallenge', JSON.stringify({ name: nickname, score: Math.floor(score), completedAt: new Date().toISOString(), code: 'SJ-' + Date.now().toString(36).toUpperCase() })) } catch (e) { console.warn('遊玩紀錄無法儲存', e) }
   $('resultComments').replaceChildren();
   document.querySelectorAll('#comments>.reply').forEach(x => $('resultComments').append(x.cloneNode(true)));
   page('result');
@@ -125,7 +125,7 @@ function startGameTimer() {
 
 }
 
-function renderRanking() { const box = $('rankBox'); box.replaceChildren(); if (!entries.length) { const p = document.createElement('p'); p.className = 'empty-rank'; p.innerHTML = '目前尚無挑戰紀錄<br>完成挑戰後會顯示在這裡'; box.append(p); return } entries.slice().sort((a, b) => b.score - a.score).forEach((e, i) => { const row = document.createElement('div'); row.className = 'rank-item'; const name = document.createElement('span'); name.textContent = `${i + 1}. ${e.name}`; const score = document.createElement('b'); score.textContent = e.score + '分'; row.append(name, score); box.append(row) }) }
+function renderRanking() { const box = $('rankBox'); box.replaceChildren(); if (!entries.length) { const p = document.createElement('p'); p.className = 'empty-rank'; p.innerHTML = '目前尚無挑戰紀錄<br>完成挑戰後會顯示在這裡'; box.append(p); return } entries.slice().sort((a, b) => b.score - a.score).forEach((e, i) => { const row = document.createElement('div'); row.className = 'rank-item'; const name = document.createElement('span'); name.textContent = `${i + 1}. ${e.name}`; const score = document.createElement('b'); score.textContent = String(Math.floor(e.score)) + '分'; row.append(name, score); box.append(row) }) }
 // 排行榜改用商品圖片，舊廣告切換按鈕已移除；不再綁定不存在的元素。
 $('replay').onclick = () => page('nickname'); $('saveResult').onclick = () => { toast('可使用手機截圖儲存此畫面') }; $('shareResult').onclick = () => { const message = `我在舒潔水啦挑戰拿到 ${$('score').textContent}！`; const url = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(message); window.open(url, '_blank', 'noopener,noreferrer') };
 

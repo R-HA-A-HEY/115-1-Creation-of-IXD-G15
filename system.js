@@ -195,6 +195,7 @@ function Update() {
                 score += 100 * (1 + combo * 0.1);
             } else {
                 combo = 0;
+                score -= 100
             }
             settling = true;
             settleStart = now;
@@ -205,7 +206,6 @@ function Update() {
             });
             combo = 0;
             ResetBall();
-            choice = GetChoice();
         }
     }
 
