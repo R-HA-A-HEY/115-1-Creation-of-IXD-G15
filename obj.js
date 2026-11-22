@@ -1,5 +1,5 @@
 export const MAX_Z = 100;
-export const DEPTH_Y = 2.6;
+export const DEPTH_Y = 3.6;
 export function DepthScale(z){
     return 1 - (z / MAX_Z) * 0.3;
 }
@@ -37,27 +37,27 @@ export class Choice {
         return dx <= (this.width + bw) / 2 * hitScale &&
             dy <= (this.height + bh) / 2 * hitScale;
     }
-Draw(ctx) {
-    const left = this.active? this.x - this.width * 0.6 : this.x - this.width / 2;
-    const top = this.active? this.y - this.height * 0.6 : this.y - this.height / 2;
-    const width = this.active? this.width * 1.2 : this.width * 0.8;
-    const height = this.active? this.height * 1.2 : this.height * 0.8;
-    ctx.save();
-    ctx.globalAlpha = this.active ? 1 : 0.45;
-    ctx.drawImage(
-        this.image,
-        left + width * 0.1,
-        top + height * 0.1,
-        width * 0.8, 
-        height * 0.8
-    );
-    ctx.strokeStyle = this.active ? "#ff5a36" : "#41454b";
-    ctx.lineWidth = this.active ? 6 : 4;
-    ctx.beginPath();
-    ctx.roundRect(left, top, width, height, 16);
-    ctx.stroke();
-    ctx.restore();
-}
+    Draw(ctx) {
+        const left = this.active? this.x - this.width * 0.6 : this.x - this.width / 2;
+        const top = this.active? this.y - this.height * 0.6 : this.y - this.height / 2;
+        const width = this.active? this.width * 1.2 : this.width * 0.8;
+        const height = this.active? this.height * 1.2 : this.height * 0.8;
+        ctx.save();
+        ctx.globalAlpha = this.active ? 1 : 0.45;
+        ctx.drawImage(
+            this.image,
+            left + width * 0.1,
+            top + height * 0.1,
+            width * 0.8, 
+            height * 0.8
+        );
+        ctx.strokeStyle = this.active ? "#ff5a36" : "#41454b";
+        ctx.lineWidth = this.active ? 6 : 4;
+        ctx.beginPath();
+        ctx.roundRect(left, top, width, height, 16);
+        ctx.stroke();
+        ctx.restore();
+    }
     Set(id, x, y, z, width, height, speed, minX, maxX) {
         this.id = id;
         this.x = x;

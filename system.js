@@ -168,7 +168,7 @@ function Update() {
     const flying = paperBall.isActive && !paperBall.isDragging;
     let hit = null;
 
-    ScrollChoices(choice, settling ? 0 : dt);   // 選中後暫停捲動，讓被選中的那張留在原地
+    ScrollChoices(choice, settling ? 0 : dt);
     if (flying && !settling && activeChoice &&
         paperBall.z >= JUDGE_Z && activeChoice.Contains(paperBall, HIT_SCALE)) {
         hit = activeChoice;
@@ -293,7 +293,7 @@ function LaunchStraight(tx) {
     paperBall.z = 0;
     paperBall.scaleX = paperBall.scaleY = 1;
     paperBall.velocityX = (tx - paperBall.x) / STRAIGHT_FRAMES;
-    paperBall.velocityY = (floorY - paperBall.y) / STRAIGHT_FRAMES;   // 終點固定在選項那一排
+    paperBall.velocityY = (floorY - paperBall.y) / STRAIGHT_FRAMES;
     paperBall.velocityZ = CHOICE_Z / STRAIGHT_FRAMES;
     releasedAt = performance.now();
 }
