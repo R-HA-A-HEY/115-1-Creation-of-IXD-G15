@@ -38,21 +38,23 @@ export class Choice {
             dy <= (this.height + bh) / 2 * hitScale;
     }
 Draw(ctx) {
-    const left = this.x - this.width / 2;
-    const top = this.y - this.height / 2;
+    const left = this.active? this.x - this.width * 0.6 : this.x - this.width / 2;
+    const top = this.active? this.y - this.height * 0.6 : this.y - this.height / 2;
+    const width = this.active? this.width * 1.2 : this.width * 0.8;
+    const height = this.active? this.height * 1.2 : this.height * 0.8;
     ctx.save();
     ctx.globalAlpha = this.active ? 1 : 0.45;
     ctx.drawImage(
         this.image,
-        left + this.width * 0.1,
-        top + this.height * 0.1,
-        this.width * 0.8,
-        this.height * 0.8
+        left + width * 0.1,
+        top + height * 0.1,
+        width * 0.8, 
+        height * 0.8
     );
     ctx.strokeStyle = this.active ? "#ff5a36" : "#41454b";
     ctx.lineWidth = this.active ? 6 : 4;
     ctx.beginPath();
-    ctx.roundRect(left, top, this.width, this.height, 16);
+    ctx.roundRect(left, top, width, height, 16);
     ctx.stroke();
     ctx.restore();
 }
