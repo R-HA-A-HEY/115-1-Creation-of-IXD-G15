@@ -29,7 +29,7 @@ let settleStart = 0;
 let started = false;
 let rafId = 0;
 
-const SCROLL_SPEED = 60;
+const SCROLL_SPEED = 130;
 let scrollX = 0;
 let lastFrame = 0;
 let activeChoice = null;
@@ -160,6 +160,7 @@ function Restart() {
 
 function Update() {
     paperBall.Update(GRAVITY, FRICTION, screen);
+    
     const now = performance.now();
     const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 0;
     lastFrame = now;
@@ -266,8 +267,8 @@ function ScrollChoices(list, dt) {
     const itemW = CHOICEWIDTH * scale;
     const spacing = Math.max(itemW * 1.5, (w + itemW * 2) / list.length);
     const loop = spacing * list.length;
-    scrollX = (scrollX + SCROLL_SPEED * scale * dt) % loop;
-
+    scrollX = (scrollX + SCROLL_SPEED * Math.min(Math.max(1, 1 + combo / 10), 2) * scale * dt) % loop;
+    console.log(SCROLL_SPEED * Math.min(Math.max(1, 1 + combo * 3 / 10), 5));
     let best = null, bestDist = Infinity;
     list.forEach((c, i) => {
         let off = (i * spacing - scrollX) % loop;
