@@ -5,24 +5,32 @@ let combo = 0;
 
 const GRAVITY = 0;
 const FRICTION = 0.85;
-const SENSITIVITY = 0.5;
+const SENSITIVITY = 0.8;
 const BALLWIDTH = 70;
 const BALLHEIGHT = 70;
-const HOLEWIDTH = 90;
-const HOLEHEIGHT = 90;
-const HOLE_XS = [0.8, 0.2, 0.5]; 
-const HOLE_Z = 100;
+// const HOLEWIDTH = 90;
+// const HOLEHEIGHT = 90;
+// const HOLE_XS = [0.8, 0.2, 0.5]; 
+// const HOLE_Z = 100;
 const Z_TOLERANCE = 5;
 const MAX_FLIGHT_MS = 3000;
-const JUDGE_Z = HOLE_Z - Z_TOLERANCE * 6;
-const MAX_SPEED = 10;
-const HIT_SCALE = 1.3;  
+const MAX_SPEED = 10; 
+const CHOICE_XS = [0.8, 0.2, 0.5];
+const CHOICE_Y = 0.5;
+const CHOICE_Z = 100;
+const JUDGE_Z = CHOICE_Z - Z_TOLERANCE * 6;
+const HIT_SCALE = 1.2; 
+
+const SETTLE_MS = 600;
+const SETTLE_DAMPING = 0.85;
+let settling = false;
+let settleStart = 0;
 
 
 const PAPERBALL = new Image();
-const BLACKHOLE = new Image();
+// const BLACKHOLE = new Image();
 PAPERBALL.src = "sujie/紙球.png";
-BLACKHOLE.src = "Images/BlackHole.png";
+// BLACKHOLE.src = "Images/BlackHole.png";
 
 const CHOICEWIDTH = 100;
 const CHOICEHEIGHT = 100;
@@ -54,8 +62,8 @@ let scale = 1;
 const screen = new Boundary(0, 0, WIDTH, HEIGHT);
 const boundary = new Boundary(0, 0, WIDTH, HEIGHT);
 const paperBall = new PaperBall(0, 0, 0, BALLWIDTH, BALLHEIGHT, PAPERBALL);
-const blackHoles = HOLE_XS.map(() =>
-    new BlackHole(0, 0, 0, 100, HOLEWIDTH, HOLEHEIGHT, 0, 0, WIDTH, BLACKHOLE));
+// const blackHoles = HOLE_XS.map(() =>
+//     new BlackHole(0, 0, 0, 100, HOLEWIDTH, HOLEHEIGHT, 0, 0, WIDTH, BLACKHOLE));
 
 let _mouseX = 0;
 let _mouseY = 0;
@@ -94,14 +102,14 @@ export function ResetLayout() {
 
     scale = Math.min(w / WIDTH, h / HEIGHT);
     screen.Set(0, 0, w, h);
-    boundary.Set(w * 0.2, h * 0.7, w * 0.8, h);
+    boundary.Set(0, h * 0.7, w, h);
 
     ResetBall();
 
-    blackHoles.forEach((b, i) =>
-        b.Set(i, w * HOLE_XS[i], h * 0.5, 100,
-              HOLEWIDTH * scale, HOLEHEIGHT * scale,
-              0, w * 0.1, w * 0.9));
+    // blackHoles.forEach((b, i) =>
+    //     b.Set(i, w * HOLE_XS[i], h * 0.5, 100,
+    //           HOLEWIDTH * scale, HOLEHEIGHT * scale,
+    //           0, w * 0.1, w * 0.9));
 
     if (choice) PlaceChoices(choice);
 }
@@ -118,6 +126,7 @@ export function Setup() {
     new ResizeObserver(ResetLayout).observe(canvas.parentElement);
 
     canvas.addEventListener('pointerdown', (e) => {
+        if (settling) return;
         const p = pos(e);
         if (paperBall.isPointInside(p.x, p.y)) {
             canvas.setPointerCapture(e.pointerId);
@@ -174,36 +183,63 @@ export function Setup() {
 
 function Update() {
     paperBall.Update(GRAVITY, FRICTION, screen);
-    blackHoles.forEach(h => h.Update());
 
+    const now = performance.now();
     const flying = paperBall.isActive && !paperBall.isDragging;
-    if (flying) console.log('z', paperBall.z.toFixed(1), 'y', paperBall.y.toFixed(0));
-    if (flying) {
-        const crossed = paperBall.prevZ < JUDGE_Z && paperBall.z >= JUDGE_Z;
-        const timeout = performance.now() - releasedAt > MAX_FLIGHT_MS;
+    // let scored = false;
+    let hit = null;
 
-        if (crossed) {
-            const hit = blackHoles.find(h => h.Contains(paperBall, HIT_SCALE));
-            if (hit && choice[hit.id].isValid) {
+    // for (const hole of blackHoles) {
+    //     hole.Update();
+    //     if (flying && !settling && !scored &&
+    //         paperBall.z >= hole.z - Z_TOLERANCE * 6 && hole.Contains(paperBall)) {
+    //         if (choice[hole.id].isValid) scored = true;
+    //     }
+    // }
+    for (const c of choice) {
+        c.Update();
+        if (flying && !settling && !hit &&
+            paperBall.z >= c.z - Z_TOLERANCE * 6 && c.Contains(paperBall, HIT_SCALE)) {
+            hit = c;
+        }
+    }
+
+    if (settling) {
+        paperBall.velocityX *= SETTLE_DAMPING;
+        paperBall.velocityY *= SETTLE_DAMPING;
+        paperBall.velocityZ *= SETTLE_DAMPING;
+
+        const t = Math.min((now - settleStart) / SETTLE_MS, 1);
+        paperBall.scaleX = paperBall.scaleY = 1 - t * 0.5;
+
+        if (t >= 1) {
+            settling = false;
+            ResetBall();
+            choice = GetChoice();
+        }
+    } else if (flying) {
+        const reachedBack = paperBall.z >= CHOICE_Z - Z_TOLERANCE;
+        const timeout = now - releasedAt > MAX_FLIGHT_MS;
+
+        if (hit) {
+            if (hit.isValid) {
                 combo++;
                 score += 100 * (1 + combo * 0.1);
-                console.log("ll");
             } else {
                 combo = 0;
             }
-            ResetBall();
-            choice = GetChoice();
-        } else if (paperBall.IsSettled() || timeout) {
+            settling = true;
+            settleStart = now;
+        } else if (reachedBack || paperBall.IsSettled() || timeout) {
             combo = 0;
             ResetBall();
             choice = GetChoice();
         }
     }
-    console.log(paperBall.z);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     choice.forEach(c => c.Draw(ctx));
-    blackHoles.forEach(h => h.Draw(ctx));
+    // blackHoles.forEach(h => h.Draw(ctx));
     paperBall.Draw(ctx);
     requestAnimationFrame(Update);
 }
@@ -238,11 +274,11 @@ function GetChoice() {
     PlaceChoices(result);
     return result;
 }
-
 function PlaceChoices(list) {
     list.forEach((c, i) =>
-        c.Set(w * HOLE_XS[i], h * 0.2,
-              CHOICEWIDTH * scale, CHOICEHEIGHT * scale));
+        c.Set(i, w * CHOICE_XS[i], h * CHOICE_Y, CHOICE_Z,
+              CHOICEWIDTH * scale, CHOICEHEIGHT * scale,
+              0, w * 0.1, w * 0.9));
 }
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);

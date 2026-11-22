@@ -5,28 +5,61 @@ export function DepthScale(z){
 }
 export class Choice {
     constructor(x, y, width, height, src, isValid) {
+        this.id = 0;
         this.x = x;
         this.y = y;
+        this.z = MAX_Z;
         this.width = width;
         this.height = height;
         this.src = src;
         this.isValid = isValid;
         this.image = null;
+        this.speed = 0;
+        this.minX = 0;
+        this.maxX = 0;
+    }
+    Update() {
+        this.x += this.speed;
+        if (this.x + this.width / 2 > this.maxX) {
+            this.x = this.maxX - this.width / 2;
+            this.speed = -this.speed;
+        } else if (this.x - this.width / 2 < this.minX) {
+            this.x = this.minX + this.width / 2;
+            this.speed = -this.speed;
+        }
+    }
+    Contains(ball, hitScale = 1) {
+        const dx = Math.abs(ball.x - this.x) + (ball.width * ball.scaleX / 2) * 0.5;
+        const dy = Math.abs(ball.y - (this.y - ball.height * ball.scaleY / 2)) * 0.5;
+        return dx <= (this.width / 2) * hitScale && dy <= (this.height / 2) * hitScale;
     }
     Draw(ctx) {
+        const left = this.x - this.width / 2;
+        const top = this.y - this.height / 2;
         ctx.drawImage(
             this.image,
-            this.x - this.width / 2,
-            this.y - this.height / 2,
+            left,
+            top,
             this.width,
             this.height
         );
+        ctx.save();
+        ctx.strokeStyle = "#41454b";
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.roundRect(left, top, this.width, this.height, 16); 
+        ctx.restore();
     }
-    Set(x, y, width, height){
+    Set(id, x, y, z, width, height, speed, minX, maxX) {
+        this.id = id;
         this.x = x;
         this.y = y;
+        this.z = z;
         this.width = width;
         this.height = height;
+        this.speed = speed;
+        this.minX = minX;
+        this.maxX = maxX;
     }
 }
 export class Boundary{
@@ -114,8 +147,8 @@ export class PaperBall {
         }
     }
     IsSettled(){
-        return Math.abs(this.velocityX) < 0.3 &&
-               Math.abs(this.velocityY) < 0.3 &&
+        return Math.abs(this.velocityX) < 0.1 &&
+               Math.abs(this.velocityY) < 0.1 &&
                Math.abs(this.velocityZ) < 0.05;
     }
     Draw(ctx) {
