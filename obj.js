@@ -17,6 +17,7 @@ export class Choice {
         this.speed = 0;
         this.minX = 0;
         this.maxX = 0;
+        this.active = false;
     }
     Update() {
         this.x += this.speed;
@@ -36,24 +37,25 @@ export class Choice {
         return dx <= (this.width + bw) / 2 * hitScale &&
             dy <= (this.height + bh) / 2 * hitScale;
     }
-    Draw(ctx) {
-        const left = this.x - this.width / 2;
-        const top = this.y - this.height / 2;
-        ctx.drawImage(
-            this.image,
-            left + this.width * 0.1,
-            top + this.height * 0.1,
-            this.width * 0.8,
-            this.height * 0.8
-        );
-        ctx.save();
-        ctx.strokeStyle = "#41454b";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.roundRect(left, top, this.width, this.height, 16); 
-        ctx.stroke();
-        ctx.restore();
-    }
+Draw(ctx) {
+    const left = this.x - this.width / 2;
+    const top = this.y - this.height / 2;
+    ctx.save();
+    ctx.globalAlpha = this.active ? 1 : 0.45;
+    ctx.drawImage(
+        this.image,
+        left + this.width * 0.1,
+        top + this.height * 0.1,
+        this.width * 0.8,
+        this.height * 0.8
+    );
+    ctx.strokeStyle = this.active ? "#ff5a36" : "#41454b";
+    ctx.lineWidth = this.active ? 6 : 4;
+    ctx.beginPath();
+    ctx.roundRect(left, top, this.width, this.height, 16);
+    ctx.stroke();
+    ctx.restore();
+}
     Set(id, x, y, z, width, height, speed, minX, maxX) {
         this.id = id;
         this.x = x;
@@ -96,6 +98,7 @@ export class PaperBall {
         this.image = image;
         this.isActive = false;
         this.isDragging = false;
+        this.straight = false;
     }
     isPointInside(mouseX, mouseY){
         let dx = Math.abs(mouseX - this.x);
@@ -121,9 +124,10 @@ export class PaperBall {
         if (!this.isActive || this.isDragging) return;
 
         this.prevZ = this.z;
-        this.velocityY *= 0.98;
-        this.velocityX *= 0.98;
-        this.velocityZ *= 0.98;
+        const k = this.straight ? 1 : 0.98;
+        this.velocityY *= k;
+        this.velocityX *= k;
+        this.velocityZ *= k;
         this.x += this.velocityX;
         this.y += this.velocityY;
         this.z += this.velocityZ;

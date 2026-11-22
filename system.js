@@ -1,7 +1,7 @@
 import { BlackHole, Boundary, PaperBall, Choice, DEPTH_Y } from './obj.js';
 export let score = 0;
-
 let combo = 0;
+const CONTROL_MODE = "straight";
 
 const GRAVITY = 0;
 const FRICTION = 0.85;
@@ -22,11 +22,17 @@ const HIT_SCALE = 1;
 
 const SETTLE_MS = 600;
 const SETTLE_DAMPING = 0.85;
+const STRAIGHT_FRAMES = 32;  
 let settling = false;
 let settleStart = 0;
 
 let started = false;
 let rafId = 0;
+
+const SCROLL_SPEED = 60;
+let scrollX = 0;
+let lastFrame = 0;
+let activeChoice = null;
 
 
 const PAPERBALL = new Image();
@@ -79,7 +85,7 @@ function ResetBall() {
     paperBall.scaleX = paperBall.scaleY = 1;
     paperBall.isActive = false;
     paperBall.isDragging = false;
-    
+    paperBall.straight = false;
 }
 
 
@@ -94,13 +100,13 @@ function Run(seconds){
 }
 
 export function ResetLayout() {
-    const r = canvas.parentElement.getBoundingClientRect();
-    if (!r.width || !r.height) return;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    if (!cw || !ch) return;
 
-    canvas.width = r.width;
-    canvas.height = r.height;
-    w = canvas.width;
-    h = canvas.height;
+    canvas.width = cw;
+    canvas.height = ch;
+    w = cw;
+    h = ch;
 
     scale = Math.min(w / WIDTH, h / HEIGHT);
     screen.Set(0, 0, w, h);
@@ -113,7 +119,10 @@ export function ResetLayout() {
     //           HOLEWIDTH * scale, HOLEHEIGHT * scale,
     //           0, w * 0.1, w * 0.9));
 
-    if (choice) PlaceChoices(choice);
+    if (choice) { 
+        PlaceChoices(choice); 
+        ScrollChoices(choice, 0); 
+    }
 }
 
 function pos(e) {
@@ -127,60 +136,10 @@ function pos(e) {
 export function Setup() {
     if (started) { Restart(); return; }
     started = true;
-    new ResizeObserver(ResetLayout).observe(canvas.parentElement);
+    new ResizeObserver(ResetLayout).observe(canvas);
 
-    canvas.addEventListener('pointerdown', (e) => {
-        if (settling) return;
-        const p = pos(e);
-        if (paperBall.isPointInside(p.x, p.y)) {
-            canvas.setPointerCapture(e.pointerId);
-            paperBall.isActive = true;
-            paperBall.isDragging = true;
-            paperBall.velocityX = paperBall.velocityY = paperBall.velocityZ = 0;
-            paperBall.z = 0;
-            paperBall.scaleX = paperBall.scaleY = 1;
-            _mouseX = p.x;
-            _mouseY = p.y;
-        }
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-        if (!paperBall.isDragging) return;
-        const p = pos(e);
-        paperBall.velocityX = (p.x - _mouseX) * SENSITIVITY;
-        paperBall.velocityY = (p.y - _mouseY) * SENSITIVITY;
-
-        const sp = Math.hypot(paperBall.velocityX, paperBall.velocityY);
-        if (sp > MAX_SPEED) {
-            paperBall.velocityX *= MAX_SPEED / sp;
-            paperBall.velocityY *= MAX_SPEED / sp;
-        }
-        // paperBall.velocityZ = Math.abs(p.y - _mouseY) * SENSITIVITY * 0.2;
-        paperBall.x = p.x;
-        paperBall.y = p.y;
-        _mouseX = p.x;
-        _mouseY = p.y;
-        paperBall.ConstrainToBoundary(boundary);
-    });
-
-    canvas.addEventListener('pointercancel', () => {
-        paperBall.isDragging = false;
-        paperBall.velocityX = paperBall.velocityY = paperBall.velocityZ = 0;
-        ResetBall();
-    });
-
-    const release = () => {
-        if (paperBall.isDragging) {
-            releasedAt = performance.now();
-
-            const speed = Math.hypot(paperBall.velocityX, paperBall.velocityY);
-            if (speed > 0.5 && paperBall.velocityY < 0) {
-                paperBall.velocityZ = Math.min(3 + speed * 0.3, 5);
-            }
-        }
-        paperBall.isDragging = false;
-    };
-    canvas.addEventListener('pointerup', release);
+    if (CONTROL_MODE === "drag") BindDragControls();
+    else BindStraightControls();
 
     Restart();
 }
@@ -192,6 +151,7 @@ function Restart() {
     releasedAt = 0;
     paperBall.isActive = false;
     paperBall.isDragging = false;
+    lastFrame = 0;
     ResetLayout();
     choice = GetChoice();
     cancelAnimationFrame(rafId);
@@ -200,26 +160,17 @@ function Restart() {
 
 function Update() {
     paperBall.Update(GRAVITY, FRICTION, screen);
-
     const now = performance.now();
+    const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 0;
+    lastFrame = now;
+
     const flying = paperBall.isActive && !paperBall.isDragging;
-    // let scored = false;
     let hit = null;
 
-    // for (const hole of blackHoles) {
-    //     hole.Update();
-    //     if (flying && !settling && !scored &&
-    //         paperBall.z >= hole.z - Z_TOLERANCE * 6 && hole.Contains(paperBall)) {
-    //         if (choice[hole.id].isValid) scored = true;
-    //     }
-    // }
-    for (const c of choice) {
-        c.Update();
-        if (flying && !settling && !hit &&
-            paperBall.z >= JUDGE_Z && c.Contains(paperBall, HIT_SCALE)) {
-            hit = c;
-            console.log(hit);
-        }
+    ScrollChoices(choice, settling ? 0 : dt);   // 選中後暫停捲動，讓被選中的那張留在原地
+    if (flying && !settling && activeChoice &&
+        paperBall.z >= JUDGE_Z && activeChoice.Contains(paperBall, HIT_SCALE)) {
+        hit = activeChoice;
     }
     if (settling) {
         paperBall.velocityX *= SETTLE_DAMPING;
@@ -273,6 +224,7 @@ export function getResult(selectedId) {
         return false;
     }
 }
+
 function GetChoice() {
     const shuffled = [...CHOICE].sort(() => 0.5 - Math.random());
     const picked = shuffled.slice(0, 3);
@@ -293,16 +245,114 @@ function GetChoice() {
     });
 
     PlaceChoices(result);
+    ScrollChoices(result, 0);
     return result;
 }
+
 function PlaceChoices(list) {
     const floorY = h - CHOICE_Z * DEPTH_Y - (BALLHEIGHT * scale) / 2;
     list.forEach((c, i) =>
-        c.Set(i, w * CHOICE_XS[i], floorY, CHOICE_Z,
+        c.Set(i, c.x, floorY, CHOICE_Z,
               CHOICEWIDTH * scale, CHOICEHEIGHT * scale,
-              0, w * 0.1, w * 0.9));
+              0, 0, w));
 }
+
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
+function ScrollChoices(list, dt) {
+    if (!list || !list.length) return;
+    const itemW = CHOICEWIDTH * scale;
+    const spacing = Math.max(itemW * 1.5, (w + itemW * 2) / list.length);
+    const loop = spacing * list.length;
+    scrollX = (scrollX + SCROLL_SPEED * scale * dt) % loop;
+
+    let best = null, bestDist = Infinity;
+    list.forEach((c, i) => {
+        let off = (i * spacing - scrollX) % loop;
+        if (off < -loop / 2) off += loop;
+        else if (off >= loop / 2) off -= loop;
+        c.x = w / 2 + off;
+        c.active = false;
+        if (Math.abs(off) < bestDist) { bestDist = Math.abs(off); best = c; }
+    });
+    if (best) best.active = true;
+    activeChoice = best;
+}
+
+function LaunchStraight(tx) {
+    const floorY = h - CHOICE_Z * DEPTH_Y - (BALLHEIGHT * scale) / 2;
+    const half = paperBall.width / 2;
+    tx = Math.min(Math.max(tx, half), w - half);
+
+    paperBall.isActive = true;
+    paperBall.isDragging = false;
+    paperBall.straight = true;
+    paperBall.z = 0;
+    paperBall.scaleX = paperBall.scaleY = 1;
+    paperBall.velocityX = (tx - paperBall.x) / STRAIGHT_FRAMES;
+    paperBall.velocityY = (floorY - paperBall.y) / STRAIGHT_FRAMES;   // 終點固定在選項那一排
+    paperBall.velocityZ = CHOICE_Z / STRAIGHT_FRAMES;
+    releasedAt = performance.now();
+}
+
+function BindStraightControls() {
+    canvas.addEventListener('pointerdown', (e) => {
+        if (settling || paperBall.isActive) return;
+        LaunchStraight(pos(e).x);
+    });
+}
+
+function BindDragControls() {
+    canvas.addEventListener('pointerdown', (e) => {
+        if (settling) return;
+        const p = pos(e);
+        if (paperBall.isPointInside(p.x, p.y)) {
+            canvas.setPointerCapture(e.pointerId);
+            paperBall.straight = false;
+            paperBall.isActive = true;
+            paperBall.isDragging = true;
+            paperBall.velocityX = paperBall.velocityY = paperBall.velocityZ = 0;
+            paperBall.z = 0;
+            paperBall.scaleX = paperBall.scaleY = 1;
+            _mouseX = p.x;
+            _mouseY = p.y;
+        }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+        if (!paperBall.isDragging) return;
+        const p = pos(e);
+        paperBall.velocityX = (p.x - _mouseX) * SENSITIVITY;
+        paperBall.velocityY = (p.y - _mouseY) * SENSITIVITY;
+
+        const sp = Math.hypot(paperBall.velocityX, paperBall.velocityY);
+        if (sp > MAX_SPEED) {
+            paperBall.velocityX *= MAX_SPEED / sp;
+            paperBall.velocityY *= MAX_SPEED / sp;
+        }
+        paperBall.x = p.x;
+        paperBall.y = p.y;
+        _mouseX = p.x;
+        _mouseY = p.y;
+        paperBall.ConstrainToBoundary(boundary);
+    });
+
+    canvas.addEventListener('pointercancel', () => {
+        paperBall.isDragging = false;
+        paperBall.velocityX = paperBall.velocityY = paperBall.velocityZ = 0;
+        ResetBall();
+    });
+
+    canvas.addEventListener('pointerup', () => {
+        if (paperBall.isDragging) {
+            releasedAt = performance.now();
+            const speed = Math.hypot(paperBall.velocityX, paperBall.velocityY);
+            if (speed > 0.5 && paperBall.velocityY < 0) {
+                paperBall.velocityZ = Math.min(3 + speed * 0.3, 5);
+            }
+        }
+        paperBall.isDragging = false;
+    });
+}
