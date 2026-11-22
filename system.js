@@ -1,4 +1,4 @@
-import { BlackHole, Boundary, PaperBall, Choice, DEPTH_Y } from './obj.js';
+import { BlackHole, Boundary, PaperBall, Choice, DEPTH_Y } from './obj.js?v=20261122a';
 export let score = 0;
 let combo = 0;
 const CONTROL_MODE = "straight";

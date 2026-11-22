@@ -1,5 +1,5 @@
 'use strict';
-import { Setup, score } from './system.js';
+import { Setup, score } from './system.js?v=20261122a';
 const $ = id => document.getElementById(id);
 let nickname = '不要醬紙', replyCount = 0, selectedSticker = null, liked = false;
 const entries = [];
