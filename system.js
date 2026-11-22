@@ -25,6 +25,9 @@ const SETTLE_DAMPING = 0.85;
 let settling = false;
 let settleStart = 0;
 
+let started = false;
+let rafId = 0;
+
 
 const PAPERBALL = new Image();
 // const BLACKHOLE = new Image();
@@ -103,7 +106,7 @@ export function ResetLayout() {
     screen.Set(0, 0, w, h);
     boundary.Set(0, h * 0.7, w, h);
 
-    ResetBall();
+    if (!paperBall.isActive && !paperBall.isDragging) ResetBall();
 
     // blackHoles.forEach((b, i) =>
     //     b.Set(i, w * HOLE_XS[i], h * 0.5, 100,
@@ -122,6 +125,8 @@ function pos(e) {
 }
 
 export function Setup() {
+    if (started) { Restart(); return; }
+    started = true;
     new ResizeObserver(ResetLayout).observe(canvas.parentElement);
 
     canvas.addEventListener('pointerdown', (e) => {
@@ -158,6 +163,12 @@ export function Setup() {
         paperBall.ConstrainToBoundary(boundary);
     });
 
+    canvas.addEventListener('pointercancel', () => {
+        paperBall.isDragging = false;
+        paperBall.velocityX = paperBall.velocityY = paperBall.velocityZ = 0;
+        ResetBall();
+    });
+
     const release = () => {
         if (paperBall.isDragging) {
             releasedAt = performance.now();
@@ -170,14 +181,21 @@ export function Setup() {
         paperBall.isDragging = false;
     };
     canvas.addEventListener('pointerup', release);
-    canvas.addEventListener('pointercancel', release);
 
+    Restart();
+}
+
+function Restart() {
     score = 0;
     combo = 0;
-
+    settling = false;
+    releasedAt = 0;
+    paperBall.isActive = false;
+    paperBall.isDragging = false;
     ResetLayout();
     choice = GetChoice();
-    requestAnimationFrame(Update);
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(Update);
 }
 
 function Update() {
@@ -244,7 +262,7 @@ function Update() {
     choice.forEach(c => c.Draw(ctx));
     // blackHoles.forEach(h => h.Draw(ctx));
     paperBall.Draw(ctx);
-    requestAnimationFrame(Update);
+    rafId = requestAnimationFrame(Update);
 }
 export function getResult(selectedId) {
     if(selectedId == answerId) {
