@@ -28,14 +28,14 @@ $('menuBtn').onclick = () => {
   $('menu').classList.add('open');
   $('menuShade').classList.add('open');
 };
-$('menuBtn').onclick = () => { 
+$('menuBtn').onclick = () => {
   $('menu').classList.add('open');
   $('menuShade').classList.add('open');
 };
 $('closeMenu').onclick = closeMenu;
 $('menuShade').onclick = closeMenu;
-$('faqBtn').onclick = () => { 
-  document.querySelectorAll('#faq details').forEach(d => d.open = false); 
+$('faqBtn').onclick = () => {
+  document.querySelectorAll('#faq details').forEach(d => d.open = false);
   page('faq');
 };
 const names = ['不要醬紙', '巾天好冷', '笑到擦眼淚', '冷到結冰', '濕在太好笑'];
@@ -101,7 +101,7 @@ function completeGame() {
   stopGameTimer();
   $('score').textContent = String(Math.floor(score)) + '分';
   // entries.push({ name: nickname, score: Math.floor(score) });
-  // try { localStorage.setItem('sujieCompletedChallenge', JSON.stringify({ name: nickname, score: Math.floor(score), completedAt: new Date().toISOString(), code: 'SJ-' + Date.now().toString(36).toUpperCase() })) } catch (e) { console.warn('遊玩紀錄無法儲存', e) }
+  try { localStorage.setItem('sujieCompletedChallenge', JSON.stringify({ name: nickname, score: Math.floor(score), completedAt: new Date().toISOString(), code: 'SJ-' + Date.now().toString(36).toUpperCase() })) } catch (e) { console.warn('遊玩紀錄無法儲存', e) }
   saveScore(nickname, score);
   $('resultComments').replaceChildren();
   document.querySelectorAll('#comments>.reply').forEach(x => $('resultComments').append(x.cloneNode(true)));
